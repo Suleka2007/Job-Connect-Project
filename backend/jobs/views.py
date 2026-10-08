@@ -1,18 +1,19 @@
 from rest_framework import viewsets
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import IsAuthenticatedOrReadOnly
 
 from .models import Job
 from .serializers import JobSerializer
+from .permissions import IsEmployerOwnerOrReadOnly
 
 
 class JobViewSet(viewsets.ModelViewSet):
     queryset = Job.objects.all()
     serializer_class = JobSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsEmployerOwnerOrReadOnly]
 
     def perform_create(self, serializer):
         employer = self.request.user.employer
         serializer.save(employer=employer)
 
     def get_queryset(self):
-        return Job.objects.all()
+        return Job.objects.filter(is_active=True)
