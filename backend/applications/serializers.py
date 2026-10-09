@@ -38,3 +38,8 @@ class JobApplicationSerializer(serializers.ModelSerializer):
                 )
 
         return data
+
+class EmployerApplicationStatusSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = JobApplication
+        fields = ["status"]
