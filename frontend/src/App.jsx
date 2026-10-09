@@ -226,11 +226,19 @@ function Home() {
   )
 }
 
+
 function JobDetails() {
   const { id } = useParams()
+  const navigate = useNavigate()
+
   const [job, setJob] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  const [coverLetter, setCoverLetter] = useState('')
+  const [resume, setResume] = useState(null)
+  const [applying, setApplying] = useState(false)
+  const [applyMessage, setApplyMessage] = useState('')
+  const [applyError, setApplyError] = useState('')
 
   useEffect(() => {
     api.get(`jobs/${id}/`)
@@ -240,6 +248,85 @@ function JobDetails() {
       })
       .finally(() => setLoading(false))
   }, [id])
+
+  async function handleApply(event) {
+    event.preventDefault()
+    setApplyMessage('')
+    setApplyError('')
+
+    if (!localStorage.getItem('token')) {
+      navigate('/login')
+      return
+    }
+
+    if (!job?.is_active) {
+      setApplyError('This job is not currently accepting applications.')
+      return
+    }
+
+    const formData = new FormData()
+    formData.append('job', id)
+    formData.append('cover_letter', coverLetter)
+
+    if (resume) {
+      formData.append('resume', resume)
+    }
+
+    setApplying(true)
+
+    try {
+      await api.post('applications/', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      })
+
+      setApplyMessage('Your application was submitted successfully!')
+      setCoverLetter('')
+      setResume(null)
+
+      const fileInput = document.getElementById('application-resume')
+      if (fileInput) fileInput.value = ''
+    } catch (err) {
+      const data = err.response?.data
+
+      if (err.response?.status === 401) {
+        setApplyError('Your login session may have expired. Please log in again.')
+      } else if (err.response?.status === 403) {
+        setApplyError(
+          data?.detail || 'Only job seekers can apply for jobs.'
+        )
+      } else if (data && typeof data === 'object') {
+        const details = Object.entries(data)
+          .map(([field, value]) =>
+            `${field}: ${Array.isArray(value) ? value.join(', ') : value}`
+          )
+          .join(' ')
+        setApplyError(details || 'Unable to submit your application.')
+      } else {
+        setApplyError('Unable to submit your application. Please try again.')
+      }
+    } finally {
+      setApplying(false)
+    }
+  }
+
+  const fieldStyle = {
+    width: '100%',
+    padding: '11px 12px',
+    marginTop: '6px',
+    border: '1px solid #d1d5db',
+    borderRadius: '8px',
+    boxSizing: 'border-box',
+    font: 'inherit',
+  }
+
+  const labelStyle = {
+    display: 'block',
+    marginBottom: '16px',
+    fontWeight: 600,
+    color: '#374151',
+  }
 
   return (
     <main
@@ -258,43 +345,115 @@ function JobDetails() {
       {error && <p role="alert">{error}</p>}
 
       {!loading && !error && job && (
-        <article
-          style={{
-            marginTop: '24px',
-            padding: '28px',
-            background: '#ffffff',
-            border: '1px solid #e5e7eb',
-            borderRadius: '14px',
-            overflowWrap: 'anywhere',
-            boxSizing: 'border-box',
-          }}
-        >
-          <h1>{job.title}</h1>
+        <>
+          <article
+            style={{
+              marginTop: '24px',
+              padding: '28px',
+              background: '#ffffff',
+              border: '1px solid #e5e7eb',
+              borderRadius: '14px',
+              overflowWrap: 'anywhere',
+              boxSizing: 'border-box',
+            }}
+          >
+            <h1>{job.title}</h1>
 
-          <p style={{ color: '#6b7280' }}>
-            {job.location} · {job.job_type}
-          </p>
+            <p style={{ color: '#6b7280' }}>
+              {job.location} · {job.job_type}
+            </p>
 
-          <h3>Salary</h3>
-          <p>{job.salary || 'Not specified'}</p>
+            <h3>Salary</h3>
+            <p>{job.salary || 'Not specified'}</p>
 
-          <h3>Job Description</h3>
-          <p style={{ lineHeight: 1.7, whiteSpace: 'pre-wrap' }}>
-            {job.description || 'No description provided.'}
-          </p>
+            <h3>Job Description</h3>
+            <p style={{ lineHeight: 1.7, whiteSpace: 'pre-wrap' }}>
+              {job.description || 'No description provided.'}
+            </p>
 
-          <h3>Requirements</h3>
-          <p style={{ lineHeight: 1.7, whiteSpace: 'pre-wrap' }}>
-            {job.requirements || 'No requirements specified.'}
-          </p>
+            <h3>Requirements</h3>
+            <p style={{ lineHeight: 1.7, whiteSpace: 'pre-wrap' }}>
+              {job.requirements || 'No requirements specified.'}
+            </p>
 
-          <p>Status: {job.is_active ? 'Active' : 'Inactive'}</p>
-        </article>
+            <p>Status: {job.is_active ? 'Active' : 'Inactive'}</p>
+          </article>
+
+          {job.is_active && (
+            <section
+              style={{
+                marginTop: '24px',
+                padding: '28px',
+                background: '#ffffff',
+                border: '1px solid #e5e7eb',
+                borderRadius: '14px',
+                boxSizing: 'border-box',
+              }}
+            >
+              <h2 style={{ marginTop: 0 }}>Apply for this Job</h2>
+              <p>Submit your application and optionally attach your resume.</p>
+
+              {applyMessage && (
+                <p role="status" style={{ color: '#047857' }}>
+                  {applyMessage}
+                </p>
+              )}
+
+              {applyError && (
+                <p role="alert" style={{ color: '#b91c1c' }}>
+                  {applyError}
+                </p>
+              )}
+
+              <form onSubmit={handleApply}>
+                <label style={labelStyle}>
+                  Cover Letter (optional)
+                  <textarea
+                    style={{ ...fieldStyle, minHeight: '120px' }}
+                    value={coverLetter}
+                    onChange={(event) => setCoverLetter(event.target.value)}
+                    placeholder="Explain why you are suitable for this job..."
+                  />
+                </label>
+
+                <label style={labelStyle}>
+                  Resume (optional)
+                  <input
+                    id="application-resume"
+                    style={fieldStyle}
+                    type="file"
+                    accept=".pdf,.doc,.docx"
+                    onChange={(event) =>
+                      setResume(event.target.files?.[0] || null)
+                    }
+                  />
+                </label>
+
+                <button
+                  type="submit"
+                  className="primary-btn"
+                  disabled={applying}
+                >
+                  {applying ? 'Submitting...' : 'Apply Now'}
+                </button>
+
+                {!localStorage.getItem('token') && (
+                  <p>
+                    Please <Link to="/login">log in</Link> as a job seeker to apply.
+                  </p>
+                )}
+              </form>
+            </section>
+          )}
+
+          {!job.is_active && (
+            <p>This job is inactive and is not accepting applications.</p>
+          )}
+        </>
       )}
     </main>
   )
 }
-
 const emptyForm = {
   title: '',
   description: '',
@@ -308,6 +467,8 @@ const emptyForm = {
 function Dashboard() {
   const navigate = useNavigate()
   const [jobs, setJobs] = useState([])
+  const [applications, setApplications] = useState([])
+  const [applicationsLoading, setApplicationsLoading] = useState(false)
   const [form, setForm] = useState(emptyForm)
   const [editingId, setEditingId] = useState(null)
   const [loading, setLoading] = useState(true)
@@ -322,6 +483,7 @@ function Dashboard() {
     }
 
     loadJobs()
+    loadApplications()
   }, [navigate])
 
   async function loadJobs() {
@@ -343,6 +505,47 @@ function Dashboard() {
       }
     } finally {
       setLoading(false)
+    }
+  }
+  
+  async function loadApplications() {
+    setApplicationsLoading(true)
+
+    try {
+      const response = await api.get('applications/employer/')
+      const data = response.data
+      setApplications(Array.isArray(data) ? data : data.results || [])
+    } catch (err) {
+      setError(
+        err.response?.data?.detail ||
+        'Could not load applications. Please check your employer login.'
+      )
+    } finally {
+      setApplicationsLoading(false)
+    }
+  }
+  
+  async function updateApplicationStatus(applicationId, status) {
+    try {
+      await api.patch(
+        `applications/employer/${applicationId}/status/`,
+        { status }
+      )
+
+      setApplications((previous) =>
+        previous.map((application) =>
+          application.id === applicationId
+            ? { ...application, status }
+            : application
+        )
+      )
+
+      setMessage('Application status updated.')
+    } catch (err) {
+      setError(
+        err.response?.data?.detail ||
+        'Could not update application status.'
+      )
     }
   }
 
@@ -720,6 +923,89 @@ function Dashboard() {
                   </button>
                 </div>
               </div>
+            </article>
+          ))}
+        </div>
+      </section>
+      
+      <section style={{ marginTop: '32px' }}>
+        <div
+          style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            gap: '12px',
+            flexWrap: 'wrap',
+          }}
+        >
+          <h2>Job Applications ({applications.length})</h2>
+
+          <button
+            type="button"
+            className="secondary-btn"
+            onClick={loadApplications}
+            disabled={applicationsLoading}
+          >
+            {applicationsLoading ? 'Loading...' : 'Refresh Applications'}
+          </button>
+        </div>
+
+        {applicationsLoading && <p>Loading applications...</p>}
+
+        {!applicationsLoading && applications.length === 0 && (
+          <p>No applications have been submitted for your jobs yet.</p>
+        )}
+
+        <div style={{ display: 'grid', gap: '16px' }}>
+          {applications.map((application) => (
+            <article
+              key={application.id}
+              style={{
+                padding: '20px',
+                border: '1px solid #e5e7eb',
+                borderRadius: '12px',
+                background: '#ffffff',
+              }}
+            >
+              <h3>Application #{application.id}</h3>
+
+              <p>Job ID: {application.job}</p>
+              <p>Applicant ID: {application.applicant}</p>
+              <p>Status: {application.status}</p>
+
+              {application.cover_letter && (
+                <p>Cover Letter: {application.cover_letter}</p>
+              )}
+
+              {application.resume && (
+                <p>
+                  <a
+                    href={application.resume}
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    View Resume
+                  </a>
+                </p>
+              )}
+
+              <label>
+                Update Status:{' '}
+                <select
+                  value={application.status}
+                  onChange={(event) =>
+                    updateApplicationStatus(
+                      application.id,
+                      event.target.value
+                    )
+                  }
+                >
+                  <option value="Applied">Applied</option>
+                  <option value="Shortlisted">Shortlisted</option>
+                  <option value="Rejected">Rejected</option>
+                  <option value="Selected">Selected</option>
+                </select>
+              </label>
             </article>
           ))}
         </div>
