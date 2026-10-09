@@ -12,3 +12,24 @@ class Employer(models.Model):
 
     def __str__(self):
         return self.company_name
+
+class UserProfile(models.Model):
+    ROLE_CHOICES = [
+        ("employer", "Employer"),
+        ("job_seeker", "Job Seeker"),
+    ]
+
+    user = models.OneToOneField(
+        User,
+        on_delete=models.CASCADE,
+        related_name="profile"
+    )
+
+    role = models.CharField(
+        max_length=20,
+        choices=ROLE_CHOICES,
+        default="job_seeker"
+    )
+
+    def __str__(self):
+        return f"{self.user.username} - {self.role}"

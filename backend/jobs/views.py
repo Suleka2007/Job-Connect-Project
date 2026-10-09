@@ -12,8 +12,7 @@ class JobViewSet(viewsets.ModelViewSet):
     permission_classes = [IsEmployerOwnerOrReadOnly]
 
     def perform_create(self, serializer):
-        employer = self.request.user.employer
-        serializer.save(employer=employer)
+        serializer.save(employer=self.request.user.employer)
 
     def get_queryset(self):
         return Job.objects.filter(is_active=True)

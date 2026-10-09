@@ -20,7 +20,8 @@ class RegisterView(APIView):
                     "message": "Registration successful",
                     "token": token.key,
                     "username": user.username,
-                    "email": user.email
+                    "email": user.email,
+                    "role": user.profile.role,
                 },
                 status=status.HTTP_201_CREATED
             )
@@ -29,6 +30,7 @@ class RegisterView(APIView):
             serializer.errors,
             status=status.HTTP_400_BAD_REQUEST
         )
+
 
 
 class LoginView(APIView):
@@ -44,11 +46,21 @@ class LoginView(APIView):
         if user is not None:
             token, created = Token.objects.get_or_create(user=user)
 
+            profile = getattr(user, "profile", None)
+
+            if profile:
+                role = profile.role
+            elif hasattr(user, "employer"):
+                role = "employer"
+            else:
+                role = "unassigned"
+
             return Response(
                 {
                     "message": "Login successful",
                     "token": token.key,
-                    "username": user.username
+                    "username": user.username,
+                    "role": role,
                 },
                 status=status.HTTP_200_OK
             )

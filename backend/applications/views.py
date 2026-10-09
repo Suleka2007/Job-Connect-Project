@@ -15,11 +15,21 @@ class JobApplicationListCreateView(generics.ListCreateAPIView):
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
+        if self.request.user.profile.role != "job_seeker":
+            raise PermissionDenied(
+                "Only job seekers can view their applications."
+            )
+
         return JobApplication.objects.filter(
             applicant=self.request.user
         )
 
     def perform_create(self, serializer):
+        if self.request.user.profile.role != "job_seeker":
+            raise PermissionDenied(
+                "Only job seekers can apply for jobs."
+            )
+
         serializer.save(applicant=self.request.user)
 
 
@@ -28,7 +38,7 @@ class EmployerApplicationListView(generics.ListAPIView):
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-        if not hasattr(self.request.user, "employer"):
+        if self.request.user.profile.role != "employer":
             raise PermissionDenied(
                 "Only employers can view job applications."
             )
@@ -44,7 +54,7 @@ class EmployerApplicationStatusUpdateView(generics.UpdateAPIView):
     http_method_names = ["patch", "options", "head"]
 
     def get_queryset(self):
-        if not hasattr(self.request.user, "employer"):
+        if self.request.user.profile.role != "employer":
             raise PermissionDenied(
                 "Only employers can update application status."
             )
