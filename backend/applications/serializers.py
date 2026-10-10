@@ -4,12 +4,23 @@ from .models import JobApplication
 
 
 class JobApplicationSerializer(serializers.ModelSerializer):
+    job_title = serializers.CharField(
+        source="job.title",
+        read_only=True
+    )
+    applicant_username = serializers.CharField(
+        source="applicant.username",
+        read_only=True
+    )
+
     class Meta:
         model = JobApplication
         fields = [
             "id",
             "job",
+            "job_title",
             "applicant",
+            "applicant_username",
             "resume",
             "cover_letter",
             "status",
@@ -38,6 +49,7 @@ class JobApplicationSerializer(serializers.ModelSerializer):
                 )
 
         return data
+
 
 class EmployerApplicationStatusSerializer(serializers.ModelSerializer):
     class Meta:

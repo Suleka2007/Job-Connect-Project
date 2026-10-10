@@ -1014,6 +1014,76 @@ function Dashboard() {
   )
 }
 
+function JobSeekerDashboard() {
+  const [applications, setApplications] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
+
+  const loadApplications = async () => {
+    try {
+      setLoading(true)
+      setError('')
+      const response = await api.get('applications/')
+      setApplications(
+        Array.isArray(response.data) ? response.data : response.data.results || []
+      )
+    } catch (err) {
+      setError('Could not load your applications. Please log in again if needed.')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    loadApplications()
+  }, [])
+
+  return (
+    <main style={{ maxWidth: '1000px', margin: '0 auto', padding: '30px 20px' }}>
+      <h1>Job Seeker Dashboard</h1>
+      <p>Track the jobs you have applied for.</p>
+      <Link to="/">Back to Home</Link>
+
+      {loading && <p>Loading applications...</p>}
+      {error && <p role="alert">{error}</p>}
+
+      {!loading && !error && applications.length === 0 && (
+        <p>You haven't applied for any jobs yet.</p>
+      )}
+
+      {!loading && applications.map((application) => (
+        <article
+          key={application.id}
+          style={{
+            border: '1px solid #ddd',
+            borderRadius: '10px',
+            padding: '18px',
+            marginTop: '16px',
+          }}
+        >
+          <h2>
+            {application.job_title ||
+              application.job?.title ||
+              `Application #${application.id}`}
+          </h2>
+          <p>Status: {application.status || 'Pending'}</p>
+          {application.cover_letter && <p>{application.cover_letter}</p>}
+          {application.resume && (
+            <p>
+              <a href={application.resume} target="_blank" rel="noreferrer">
+                View Resume
+              </a>
+            </p>
+          )}
+        </article>
+      ))}
+
+      <button onClick={loadApplications} disabled={loading}>
+        Refresh Applications
+      </button>
+    </main>
+  )
+}
 function App() {
   return (
     <BrowserRouter>
@@ -1021,7 +1091,14 @@ function App() {
         <Route path="/" element={<Home />} />
         <Route path="/login" element={<Login />} />
         <Route path="/signup" element={<Signup />} />
-        <Route path="/dashboard" element={<Dashboard />} />
+        <Route
+  path="/dashboard"
+  element={
+    localStorage.getItem('role') === 'job_seeker'
+      ? <JobSeekerDashboard />
+      : <Dashboard />
+  }
+/>
         <Route path="/jobs/:id" element={<JobDetails />} />
       </Routes>
     </BrowserRouter>
